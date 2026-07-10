@@ -212,6 +212,14 @@ def recipe_detail(recipe_id):
     return render_template("recipe_detail.html", recipe=recipe)
 
 
+@app.route("/api/stats")
+def api_stats():
+    """Tiny JSON endpoint used to live-update the homepage counters."""
+    total_recipes = Recipe.query.count()
+    total_countries = db.session.query(Recipe.country_code).distinct().count()
+    return jsonify({"total_recipes": total_recipes, "total_countries": total_countries})
+
+
 @app.route("/api/recipes")
 def api_recipes():
     """Simple JSON API, handy if you want a frontend framework on top later."""
