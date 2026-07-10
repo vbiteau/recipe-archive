@@ -1,43 +1,31 @@
 {% extends "base.html" %}
-{% block title %}Scrape results{% endblock %}
+{% block title %}Scraping started{% endblock %}
 
 {% block content %}
 <section class="results">
-  <h1>Results for {{ source_url }}</h1>
+  <h1>Working on it</h1>
 
-  {% if no_recipes_found %}
-    <p class="empty-state">
-      No recipes were found on that page or site. It's possible the site
-      doesn't embed structured recipe data and the fallback scraper couldn't
-      make sense of the layout — try a single recipe page directly, or a
-      different site.
-    </p>
-  {% else %}
-    <p class="results-summary">
-      Saved <strong>{{ saved|length }}</strong> recipe{{ 's' if saved|length != 1 else '' }}.
-      {% if failed_count %}
-        {{ failed_count }} page{{ 's' if failed_count != 1 else '' }} looked like a recipe
-        but couldn't be normalized and {{ 'were' if failed_count != 1 else 'was' }} skipped.
-      {% endif %}
-    </p>
+  <p class="results-summary">
+    Started {{ 'a whole-site crawl' if mode == 'site' else 'scraping' }} for
+    <strong>{{ submitted_count }}</strong> URL{{ 's' if submitted_count != 1 else '' }}.
+    This runs in the background — each recipe gets scraped, sent to Claude to clean up,
+    and saved as it finishes.
+  </p>
 
-    {% if saved %}
-      <ul class="result-list">
-        {% for r in saved %}
-          <li>
-            <a href="{{ url_for('recipe_detail', recipe_id=r.id) }}">
-              <span class="flag">{{ r.country_code|flag }}</span>
-              {{ r.title }}
-              <span class="muted">— {{ r.country_name }}</span>
-            </a>
-          </li>
-        {% endfor %}
-      </ul>
-    {% endif %}
-  {% endif %}
+  <ul class="result-list">
+    {% for u in submitted_urls %}
+      <li>{{ u }}</li>
+    {% endfor %}
+  </ul>
+
+  <p class="hero-note">
+    Depending on how many links you submitted, this can take anywhere from a few
+    seconds to a couple minutes. Head to <a href="{{ url_for('recipes') }}">Browse recipes</a>
+    and refresh in a bit — new ones will appear as they're saved.
+  </p>
 
   <div class="actions-row">
-    <a href="{{ url_for('index') }}">Scrape another site</a>
+    <a href="{{ url_for('index') }}">Scrape more</a>
     <a href="{{ url_for('recipes') }}">Browse all recipes</a>
   </div>
 </section>
