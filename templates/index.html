@@ -33,9 +33,15 @@
   </p>
 </section>
 
+<section class="live-activity">
+  <h2 class="live-activity-heading">Live activity</h2>
+  <div class="terminal" id="liveTerminal">
+    <div class="term-empty" id="liveEmpty">Nothing scraping right now — add a site above and watch it show up here.</div>
+  </div>
+</section>
+
 <script>
-  // Poll for updated counts every few seconds, so numbers tick up live
-  // if a background scrape job is still running while you're on this page.
+  // Poll for updated homepage counts every few seconds.
   function refreshStats() {
     fetch("{{ url_for('api_stats') }}")
       .then(r => r.ok ? r.json() : null)
@@ -46,8 +52,39 @@
         if (recipesEl) recipesEl.textContent = data.total_recipes;
         if (countriesEl) countriesEl.textContent = data.total_countries;
       })
-      .catch(() => {}); // fail silently, no need to bother the user over a stat refresh
+      .catch(() => {});
   }
+
+  // Poll for globally active scrape jobs (from anyone using the site) and
+  // render them as live terminal lines.
+  function refreshActivity() {
+    fetch("{{ url_for('api_live_activity') }}")
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        const terminal = document.getElementById('liveTerminal');
+        const items = data.activity || [];
+
+        if (items.length === 0) {
+          terminal.innerHTML = '<div class="term-empty" id="liveEmpty">Nothing scraping right now — add a site above and watch it show up here.</div>';
+          return;
+        }
+
+        terminal.innerHTML = items.map(item => {
+          const stateClass = 'term-status--' + item.state;
+          const label = item.state === 'done' ? item.detail : (item.detail || 'working...');
+          return '<div class="term-line">' +
+                   '<span class="term-prompt">$</span>' +
+                   '<span class="term-url">' + item.url + '</span>' +
+                   '<span class="term-status ' + stateClass + '">' + label + '</span>' +
+                 '</div>';
+        }).join('');
+      })
+      .catch(() => {});
+  }
+
   setInterval(refreshStats, 4000);
+  setInterval(refreshActivity, 1500);
+  refreshActivity();
 </script>
 {% endblock %}
