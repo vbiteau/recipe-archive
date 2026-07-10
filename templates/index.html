@@ -15,22 +15,22 @@
   </div>
 
   <form action="{{ url_for('scrape') }}" method="POST" class="scrape-form">
-    <input
-      type="text"
+    <textarea
       name="url"
-      placeholder="e.g. seriouseats.com or a single recipe URL"
+      rows="6"
+      placeholder="Paste one or more URLs, one per line, e.g.&#10;https://www.budgetbytes.com/tuscan-white-bean-pasta/&#10;https://justonecookbook.com/some-recipe/"
       required
       autofocus
-    >
+    ></textarea>
 
     <div class="mode-toggle">
       <label>
-        <input type="radio" name="mode" value="site" checked>
-        Crawl the whole site for recipes
+        <input type="radio" name="mode" value="single" checked>
+        Each link is a single recipe page
       </label>
       <label>
-        <input type="radio" name="mode" value="single">
-        Just this one page
+        <input type="radio" name="mode" value="site">
+        Crawl each link as a whole site
       </label>
     </div>
 
@@ -38,8 +38,9 @@
   </form>
 
   <p class="hero-note">
-    Site crawls are capped per run to keep things reasonable — if a site has
-    hundreds of recipes, you may need to submit it more than once to catch stragglers.
+    In "single recipe page" mode you can paste as many links as you want, one per line.
+    In "whole site" mode, only the first link is used per submission — crawl multiple
+    sites by submitting them one at a time.
   </p>
 </section>
 {% endblock %}
