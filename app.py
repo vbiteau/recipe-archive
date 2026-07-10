@@ -39,7 +39,17 @@ def index():
     )
 
 
-def _process_scrape_job(normalized_urls, mode):
+def _is_whole_site_url(url):
+    """
+    A bare domain (nothing after the TLD, or just a trailing slash) means
+    "crawl the whole site". Any URL with a real path after it means
+    "scrape just this one recipe".
+    """
+    path = urlparse(url).path
+    return path in ("", "/")
+
+
+def _process_scrape_job(normalized_urls):
     """
     Runs in a background thread so the web request can return immediately
     instead of blocking (and risking a timeout) while every URL gets
@@ -49,12 +59,12 @@ def _process_scrape_job(normalized_urls, mode):
         found = []
         for u in normalized_urls:
             try:
-                if mode == "single":
+                if _is_whole_site_url(u):
+                    found.extend(crawl_site(u))
+                else:
                     raw = scrape_single_url(u)
                     if raw:
                         found.append({"url": u, "raw_recipe": raw})
-                else:
-                    found.extend(crawl_site(u))
             except Exception as e:
                 print(f"[scrape job] Failed to scrape {u}: {e}")
 
@@ -113,7 +123,6 @@ def _process_scrape_job(normalized_urls, mode):
 @app.route("/scrape", methods=["POST"])
 def scrape():
     raw_input = request.form.get("url", "").strip()
-    mode = request.form.get("mode", "single")  # "single" = each link is one recipe page, "site" = crawl as a whole site
 
     if not raw_input:
         flash("Please enter at least one URL.")
@@ -144,20 +153,20 @@ def scrape():
         flash("None of those looked like valid URLs.")
         return redirect(url_for("index"))
 
-    if mode == "site" and len(normalized_urls) > 1:
-        flash(f"Whole-site mode only processes one link per submission — crawling just the first ({normalized_urls[0]}). Submit the others separately.")
-        normalized_urls = normalized_urls[:1]
-
     # Kick off the actual scraping + Claude formatting in the background so
     # this request returns immediately rather than risking a timeout.
-    thread = threading.Thread(target=_process_scrape_job, args=(normalized_urls, mode), daemon=True)
+    thread = threading.Thread(target=_process_scrape_job, args=(normalized_urls,), daemon=True)
     thread.start()
+
+    site_count = sum(1 for u in normalized_urls if _is_whole_site_url(u))
+    single_count = len(normalized_urls) - site_count
 
     return render_template(
         "scrape_result.html",
         submitted_count=len(normalized_urls),
         submitted_urls=normalized_urls,
-        mode=mode,
+        site_count=site_count,
+        single_count=single_count,
     )
 
 
