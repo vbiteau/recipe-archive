@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Scrape results{% endblock %}
+
+{% block content %}
+<section class="results">
+  <h1>Results for {{ source_url }}</h1>
+
+  {% if no_recipes_found %}
+    <p class="empty-state">
+      No recipes were found on that page or site. It's possible the site
+      doesn't embed structured recipe data and the fallback scraper couldn't
+      make sense of the layout — try a single recipe page directly, or a
+      different site.
+    </p>
+  {% else %}
+    <p class="results-summary">
+      Saved <strong>{{ saved|length }}</strong> recipe{{ 's' if saved|length != 1 else '' }}.
+      {% if failed_count %}
+        {{ failed_count }} page{{ 's' if failed_count != 1 else '' }} looked like a recipe
+        but couldn't be normalized and {{ 'were' if failed_count != 1 else 'was' }} skipped.
+      {% endif %}
+    </p>
+
+    {% if saved %}
+      <ul class="result-list">
+        {% for r in saved %}
+          <li>
+            <a href="{{ url_for('recipe_detail', recipe_id=r.id) }}">
+              <span class="flag">{{ r.country_code|flag }}</span>
+              {{ r.title }}
+              <span class="muted">— {{ r.country_name }}</span>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endif %}
+
+  <div class="actions-row">
+    <a href="{{ url_for('index') }}">Scrape another site</a>
+    <a href="{{ url_for('recipes') }}">Browse all recipes</a>
+  </div>
+</section>
+{% endblock %}

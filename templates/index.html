@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}World Recipe Archive{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <h1>Every recipe, one clean shape.</h1>
+  <p class="hero-sub">
+    Drop in a recipe site and this pulls every recipe it can find, rewrites it
+    into one consistent format, and files it by country of origin.
+  </p>
+
+  <div class="stat-row">
+    <div class="stat"><strong>{{ total_recipes }}</strong><span>recipes archived</span></div>
+    <div class="stat"><strong>{{ total_countries }}</strong><span>countries represented</span></div>
+  </div>
+
+  <form action="{{ url_for('scrape') }}" method="POST" class="scrape-form">
+    <input
+      type="text"
+      name="url"
+      placeholder="e.g. seriouseats.com or a single recipe URL"
+      required
+      autofocus
+    >
+
+    <div class="mode-toggle">
+      <label>
+        <input type="radio" name="mode" value="site" checked>
+        Crawl the whole site for recipes
+      </label>
+      <label>
+        <input type="radio" name="mode" value="single">
+        Just this one page
+      </label>
+    </div>
+
+    <button type="submit">Scrape it</button>
+  </form>
+
+  <p class="hero-note">
+    Site crawls are capped per run to keep things reasonable — if a site has
+    hundreds of recipes, you may need to submit it more than once to catch stragglers.
+  </p>
+</section>
+{% endblock %}

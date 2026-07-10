@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Browse recipes{% endblock %}
+
+{% block content %}
+<section class="browse">
+  <div class="browse-header">
+    <h1>Browse by country</h1>
+    <form method="GET" class="filter-form">
+      <select name="country" onchange="this.form.submit()">
+        <option value="">All countries</option>
+        {% for code, name in all_countries %}
+          <option value="{{ code }}" {% if active_filter == code %}selected{% endif %}>
+            {{ code|flag }} {{ name }}
+          </option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+
+  {% if not grouped %}
+    <p class="empty-state">No recipes yet — <a href="{{ url_for('index') }}">go scrape a site</a>.</p>
+  {% endif %}
+
+  {% for (code, name), recipe_list in grouped.items() %}
+    <div class="country-group">
+      <h2><span class="flag">{{ code|flag }}</span> {{ name or "Unknown" }}
+        <span class="count">{{ recipe_list|length }}</span>
+      </h2>
+      <div class="recipe-grid">
+        {% for r in recipe_list %}
+          <a class="recipe-card" href="{{ url_for('recipe_detail', recipe_id=r.id) }}">
+            {% if r.image_url %}
+              <div class="card-image" style="background-image:url('{{ r.image_url }}');"></div>
+            {% else %}
+              <div class="card-image card-image--placeholder">{{ code|flag }}</div>
+            {% endif %}
+            <div class="card-body">
+              <h3>{{ r.title }}</h3>
+              {% if r.cuisine_region %}<span class="muted">{{ r.cuisine_region }}</span>{% endif %}
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+</section>
+{% endblock %}

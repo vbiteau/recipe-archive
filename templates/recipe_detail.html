@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}{{ recipe.title }}{% endblock %}
+
+{% block content %}
+<article class="recipe-detail">
+  <a class="back-link" href="{{ url_for('recipes') }}">&larr; All recipes</a>
+
+  {% if recipe.image_url %}
+    <div class="detail-image" style="background-image:url('{{ recipe.image_url }}');"></div>
+  {% endif %}
+
+  <h1>{{ recipe.title }}</h1>
+  <p class="origin-line">
+    <span class="flag">{{ recipe.country_code|flag }}</span>
+    {{ recipe.country_name }}
+    {% if recipe.cuisine_region %} &middot; {{ recipe.cuisine_region }}{% endif %}
+  </p>
+
+  <div class="meta-row">
+    {% if recipe.servings %}<span><strong>Servings:</strong> {{ recipe.servings }}</span>{% endif %}
+    {% if recipe.prep_time %}<span><strong>Prep:</strong> {{ recipe.prep_time }}</span>{% endif %}
+    {% if recipe.cook_time %}<span><strong>Cook:</strong> {{ recipe.cook_time }}</span>{% endif %}
+    {% if recipe.total_time %}<span><strong>Total:</strong> {{ recipe.total_time }}</span>{% endif %}
+  </div>
+
+  <div class="recipe-columns">
+    <div class="ingredients-col">
+      <h2>Ingredients</h2>
+      <ul>
+        {% for ing in recipe.ingredients %}<li>{{ ing }}</li>{% endfor %}
+      </ul>
+    </div>
+
+    <div class="steps-col">
+      <h2>Steps</h2>
+      <ol>
+        {% for step in recipe.steps %}<li>{{ step }}</li>{% endfor %}
+      </ol>
+    </div>
+  </div>
+
+  {% if recipe.notes %}
+    <div class="notes">
+      <h2>Notes</h2>
+      <p>{{ recipe.notes }}</p>
+    </div>
+  {% endif %}
+
+  <p class="source-line">
+    Source: <a href="{{ recipe.source_url }}" target="_blank" rel="noopener">{{ recipe.source_domain }}</a>
+  </p>
+</article>
+{% endblock %}
