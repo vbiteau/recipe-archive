@@ -12,7 +12,7 @@ import os
 from collections import deque
 from urllib.parse import urljoin, urlparse
 
-from scraper import fetch_page, extract_recipe_from_soup
+from scraper import fetch_page, extract_recipe_from_soup, resolve_final_url
 
 MAX_CRAWL_PAGES = int(os.environ.get("MAX_CRAWL_PAGES", 60))
 
@@ -50,10 +50,14 @@ def crawl_site(start_url, max_pages=None, progress_callback=None):
     after each page — useful for streaming status back to a user.
     """
     max_pages = max_pages or MAX_CRAWL_PAGES
-    root_netloc = urlparse(start_url).netloc
+
+    # Resolve redirects first (e.g. bare domain -> www) so domain-matching
+    # is based on where the site actually lives, not what was typed in.
+    resolved_start = resolve_final_url(start_url)
+    root_netloc = urlparse(resolved_start).netloc
 
     visited = set()
-    queue = deque([start_url])
+    queue = deque([resolved_start])
     found = []
 
     while queue and len(visited) < max_pages:
@@ -84,4 +88,5 @@ def crawl_site(start_url, max_pages=None, progress_callback=None):
         if progress_callback:
             progress_callback(len(visited), len(found))
 
+    print(f"[crawler] Finished: visited {len(visited)} pages, found {len(found)} recipe candidates for {start_url}")
     return found
