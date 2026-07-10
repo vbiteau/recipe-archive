@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Idk, what do you want?{% endblock %}
+
+{% block content %}
+<section class="surprise">
+
+  {% if not recipe %}
+    <p class="empty-state">
+      No recipes archived yet — <a href="{{ url_for('index') }}">go scrape a site first</a>,
+      then come back and let fate decide.
+    </p>
+  {% else %}
+    <div class="surprise-card" id="surpriseCard">
+      <a class="surprise-link" href="/recipes/{{ recipe.id }}" id="surpriseLink">
+        {% if recipe.image_url %}
+          <div class="surprise-image" id="surpriseImage" style="background-image:url('{{ recipe.image_url }}');"></div>
+        {% else %}
+          <div class="surprise-image surprise-image--placeholder" id="surpriseImage">{{ recipe.country_code|flag }}</div>
+        {% endif %}
+        <div class="surprise-body">
+          <p class="surprise-origin" id="surpriseOrigin">
+            <span class="flag">{{ recipe.country_code|flag }}</span> {{ recipe.country_name }}
+          </p>
+          <h1 id="surpriseTitle">{{ recipe.title }}</h1>
+        </div>
+      </a>
+    </div>
+
+    <div class="surprise-actions">
+      <button type="button" class="btn-nah" id="nahBtn">nahhh</button>
+      <a class="btn-yes" href="/recipes/{{ recipe.id }}" id="yesLink">this one</a>
+    </div>
+  {% endif %}
+
+</section>
+
+<script>
+  let currentId = {{ recipe.id if recipe else 'null' }};
+
+  function renderRecipe(r) {
+    currentId = r.id;
+    document.getElementById('surpriseTitle').textContent = r.title;
+    document.getElementById('surpriseOrigin').innerHTML =
+      '<span class="flag">' + (r.country_code ? countryFlag(r.country_code) : '🌐') + '</span> ' + (r.country_name || 'Unknown');
+
+    const img = document.getElementById('surpriseImage');
+    if (r.image_url) {
+      img.style.backgroundImage = "url('" + r.image_url + "')";
+      img.classList.remove('surprise-image--placeholder');
+      img.textContent = '';
+    } else {
+      img.style.backgroundImage = 'none';
+      img.classList.add('surprise-image--placeholder');
+      img.textContent = r.country_code ? countryFlag(r.country_code) : '🌐';
+    }
+
+    document.getElementById('surpriseLink').href = '/recipes/' + r.id;
+    document.getElementById('yesLink').href = '/recipes/' + r.id;
+  }
+
+  function countryFlag(code) {
+    if (!code || code.length !== 2) return '🌐';
+    code = code.toUpperCase();
+    return String.fromCodePoint(...[...code].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
+  }
+
+  const nahBtn = document.getElementById('nahBtn');
+  if (nahBtn) {
+    nahBtn.addEventListener('click', () => {
+      const card = document.getElementById('surpriseCard');
+      card.classList.add('surprise-card--rerolling');
+      fetch('/api/random-recipe?exclude=' + currentId)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data && !data.error) renderRecipe(data);
+          card.classList.remove('surprise-card--rerolling');
+        })
+        .catch(() => { card.classList.remove('surprise-card--rerolling'); });
+    });
+  }
+</script>
+{% endblock %}
