@@ -233,6 +233,98 @@ main{
 
 .empty-state{ color:var(--text-dim); }
 
+/* ---------- Surprise me ---------- */
+
+.surprise{
+  max-width:520px;
+  margin:1rem auto 0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+}
+
+.surprise-card{
+  width:100%;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  overflow:hidden;
+  transition:opacity 0.2s ease;
+}
+
+.surprise-card--rerolling{ opacity:0.4; }
+
+.surprise-link{ display:block; }
+
+.surprise-image{
+  height:260px;
+  background-size:cover;
+  background-position:center;
+  background-color:var(--bg-raised);
+}
+
+.surprise-image--placeholder{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:4rem;
+}
+
+.surprise-body{ padding:1.5rem; text-align:left; }
+
+.surprise-origin{
+  color:var(--text-dim);
+  font-size:0.9rem;
+  margin-bottom:0.4rem;
+  display:flex;
+  align-items:center;
+  gap:0.4rem;
+}
+
+.surprise-body h1{
+  font-size:clamp(1.4rem, 4vw, 1.9rem);
+  margin:0;
+}
+
+.surprise-actions{
+  display:flex;
+  gap:1rem;
+  margin-top:1.75rem;
+  width:100%;
+}
+
+.btn-nah{
+  flex:1;
+  background:transparent;
+  border:1px solid var(--paprika);
+  color:var(--paprika);
+  border-radius:8px;
+  padding:0.9em 1.5em;
+  font-size:1rem;
+  font-weight:600;
+  cursor:pointer;
+  transition:background 0.2s ease, color 0.2s ease;
+  font-family:'Inter', sans-serif;
+}
+.btn-nah:hover{ background:var(--paprika); color:var(--text); }
+.btn-nah:focus-visible{ outline:2px solid var(--text); outline-offset:2px; }
+
+.btn-yes{
+  flex:1;
+  background:var(--saffron);
+  border:none;
+  color:#1C1712;
+  border-radius:8px;
+  padding:0.9em 1.5em;
+  font-size:1rem;
+  font-weight:600;
+  text-align:center;
+  transition:background 0.2s ease;
+}
+.btn-yes:hover{ background:#f0ba58; }
+.btn-yes:focus-visible{ outline:2px solid var(--text); outline-offset:2px; }
+
 /* ---------- Live scrape terminal ---------- */
 
 .terminal{
