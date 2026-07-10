@@ -6,9 +6,16 @@
   <h1>Working on it</h1>
 
   <p class="results-summary">
-    Started {{ 'a whole-site crawl' if mode == 'site' else 'scraping' }} for
-    <strong>{{ submitted_count }}</strong> URL{{ 's' if submitted_count != 1 else '' }}.
-    This runs in the background — each recipe gets scraped, sent to Claude to clean up,
+    Started scraping <strong>{{ submitted_count }}</strong> link{{ 's' if submitted_count != 1 else '' }}
+    {%- if site_count and single_count %}
+      — {{ site_count }} whole-site crawl{{ 's' if site_count != 1 else '' }} and
+      {{ single_count }} single recipe page{{ 's' if single_count != 1 else '' }}
+    {%- elif site_count %}
+      as whole-site crawl{{ 's' if site_count != 1 else '' }}
+    {%- elif single_count %}
+      as single recipe page{{ 's' if single_count != 1 else '' }}
+    {%- endif -%}
+    . This runs in the background — each recipe gets scraped, sent to Claude to clean up,
     and saved as it finishes.
   </p>
 
