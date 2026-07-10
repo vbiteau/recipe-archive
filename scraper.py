@@ -35,6 +35,20 @@ def fetch_page(url):
         return None
 
 
+def resolve_final_url(url):
+    """
+    Follow redirects and return the URL actually landed on (e.g. a bare
+    domain like example.com often redirects to www.example.com). Used so
+    the crawler's "same domain" check compares against the real domain,
+    not the one originally typed in.
+    """
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT, allow_redirects=True)
+        return resp.url
+    except requests.RequestException:
+        return url
+
+
 def _flatten_jsonld(data):
     """JSON-LD can nest recipes inside @graph, or be a list of objects. Flatten it."""
     items = []
@@ -160,8 +174,10 @@ def extract_recipe_from_soup(soup):
     if recipe is None:
         recipe = extract_heuristic_recipe(soup)
 
-    # Require at least some ingredients or steps to count as a real recipe
-    if recipe and (recipe.get("ingredients_raw") or recipe.get("steps_raw")):
+    # Require BOTH ingredients and steps to count as a real recipe. A page with
+    # only one or the other (e.g. a homepage that happens to mention
+    # "ingredients" near an unrelated list) is almost never an actual recipe.
+    if recipe and recipe.get("ingredients_raw") and recipe.get("steps_raw"):
         return recipe
     return None
 
