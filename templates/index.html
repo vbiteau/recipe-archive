@@ -18,29 +18,18 @@
     <textarea
       name="url"
       rows="6"
-      placeholder="Paste one or more URLs, one per line, e.g.&#10;https://www.budgetbytes.com/tuscan-white-bean-pasta/&#10;https://justonecookbook.com/some-recipe/"
+      placeholder="Paste one or more URLs, one per line.&#10;&#10;A bare domain crawls the whole site: budgetbytes.com&#10;A link with a path scrapes just that recipe: budgetbytes.com/tuscan-white-bean-pasta/"
       required
       autofocus
     ></textarea>
-
-    <div class="mode-toggle">
-      <label>
-        <input type="radio" name="mode" value="single" checked>
-        Each link is a single recipe page
-      </label>
-      <label>
-        <input type="radio" name="mode" value="site">
-        Crawl each link as a whole site
-      </label>
-    </div>
 
     <button type="submit">Scrape it</button>
   </form>
 
   <p class="hero-note">
-    In "single recipe page" mode you can paste as many links as you want, one per line.
-    In "whole site" mode, only the first link is used per submission — crawl multiple
-    sites by submitting them one at a time.
+    Each link decides its own mode: a bare domain (nothing after the .com/.net/etc)
+    crawls the whole site for recipes. A link with a path after it is scraped as a
+    single recipe page. Mix and match freely, one per line.
   </p>
 </section>
 {% endblock %}
