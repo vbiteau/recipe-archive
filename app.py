@@ -161,4 +161,54 @@ def scrape():
     )
 
 
-# ---------- Browse
+# ---------- Browse recipes, grouped by country ----------
+
+@app.route("/recipes")
+def recipes():
+    country_filter = request.args.get("country")
+
+    query = Recipe.query.order_by(Recipe.country_name, Recipe.title)
+    if country_filter:
+        query = query.filter(Recipe.country_code == country_filter.upper())
+    all_recipes = query.all()
+
+    # Group by country for display
+    grouped = {}
+    for r in all_recipes:
+        key = (r.country_code, r.country_name)
+        grouped.setdefault(key, []).append(r)
+
+    # Sort countries alphabetically by name
+    grouped_sorted = dict(sorted(grouped.items(), key=lambda kv: (kv[0][1] or "Unknown")))
+
+    # For the filter dropdown: every distinct country currently in the DB
+    all_countries = (
+        db.session.query(Recipe.country_code, Recipe.country_name)
+        .distinct()
+        .order_by(Recipe.country_name)
+        .all()
+    )
+
+    return render_template(
+        "recipes.html",
+        grouped=grouped_sorted,
+        all_countries=all_countries,
+        active_filter=country_filter.upper() if country_filter else None,
+    )
+
+
+@app.route("/recipes/<int:recipe_id>")
+def recipe_detail(recipe_id):
+    recipe = Recipe.query.get_or_404(recipe_id)
+    return render_template("recipe_detail.html", recipe=recipe)
+
+
+@app.route("/api/recipes")
+def api_recipes():
+    """Simple JSON API, handy if you want a frontend framework on top later."""
+    all_recipes = Recipe.query.order_by(Recipe.country_name, Recipe.title).all()
+    return jsonify([r.to_dict() for r in all_recipes])
+
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)
