@@ -10,8 +10,8 @@
   </p>
 
   <div class="stat-row">
-    <div class="stat"><strong>{{ total_recipes }}</strong><span>recipes archived</span></div>
-    <div class="stat"><strong>{{ total_countries }}</strong><span>countries represented</span></div>
+    <div class="stat"><strong id="statRecipes">{{ total_recipes }}</strong><span>recipes archived</span></div>
+    <div class="stat"><strong id="statCountries">{{ total_countries }}</strong><span>countries represented</span></div>
   </div>
 
   <form action="{{ url_for('scrape') }}" method="POST" class="scrape-form">
@@ -32,4 +32,22 @@
     single recipe page. Mix and match freely, one per line.
   </p>
 </section>
+
+<script>
+  // Poll for updated counts every few seconds, so numbers tick up live
+  // if a background scrape job is still running while you're on this page.
+  function refreshStats() {
+    fetch("{{ url_for('api_stats') }}")
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        const recipesEl = document.getElementById('statRecipes');
+        const countriesEl = document.getElementById('statCountries');
+        if (recipesEl) recipesEl.textContent = data.total_recipes;
+        if (countriesEl) countriesEl.textContent = data.total_countries;
+      })
+      .catch(() => {}); // fail silently, no need to bother the user over a stat refresh
+  }
+  setInterval(refreshStats, 4000);
+</script>
 {% endblock %}
