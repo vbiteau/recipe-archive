@@ -255,6 +255,31 @@ def api_live_activity():
     return jsonify({"activity": activity[:15]})
 
 
+# ---------- "Idk, what do you want?" — random recipe picker ----------
+
+def _pick_random_recipe(exclude_id=None):
+    """Pick one random recipe, avoiding exclude_id if there's more than one to choose from."""
+    query = Recipe.query
+    if exclude_id is not None and Recipe.query.count() > 1:
+        query = query.filter(Recipe.id != exclude_id)
+    return query.order_by(db.func.random()).first()
+
+
+@app.route("/surprise")
+def surprise():
+    recipe = _pick_random_recipe()
+    return render_template("surprise.html", recipe=recipe)
+
+
+@app.route("/api/random-recipe")
+def api_random_recipe():
+    exclude_id = request.args.get("exclude", type=int)
+    recipe = _pick_random_recipe(exclude_id=exclude_id)
+    if recipe is None:
+        return jsonify({"error": "empty"}), 404
+    return jsonify(recipe.to_dict())
+
+
 # ---------- Browse recipes, grouped by country ----------
 
 @app.route("/recipes")
