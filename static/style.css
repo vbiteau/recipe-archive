@@ -124,7 +124,8 @@ main{
   text-align:left;
 }
 
-.scrape-form input[type="text"]{
+.scrape-form input[type="text"],
+.scrape-form textarea{
   background:var(--bg);
   border:1px solid var(--line);
   border-radius:6px;
@@ -133,7 +134,13 @@ main{
   padding:0.9em 1em;
   font-family:'Inter', sans-serif;
 }
-.scrape-form input[type="text"]:focus{
+.scrape-form textarea{
+  resize:vertical;
+  min-height:120px;
+  line-height:1.5;
+}
+.scrape-form input[type="text"]:focus,
+.scrape-form textarea:focus{
   outline:2px solid var(--saffron);
   outline-offset:1px;
 }
