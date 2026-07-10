@@ -186,6 +186,7 @@ main{
   gap:0.6rem;
   margin-bottom:2rem;
 }
+.result-list li,
 .result-list li a{
   display:block;
   background:var(--bg-raised);
@@ -193,9 +194,11 @@ main{
   border-radius:8px;
   padding:0.9rem 1.1rem;
   transition:border-color 0.2s ease;
+  font-size:0.9rem;
+  color:var(--text-dim);
+  word-break:break-all;
 }
 .result-list li a:hover{ border-color:var(--saffron); }
-
 .actions-row{ display:flex; gap:1.5rem; }
 .actions-row a{
   color:var(--saffron);
