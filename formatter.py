@@ -86,13 +86,17 @@ def format_recipe(raw_recipe, source_url):
 
     try:
         data = json.loads(text)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        print(f"[formatter] JSON parse failed for {source_url}: {e}")
+        print(f"[formatter] Raw Claude output was: {text[:1000]}")
         return None
 
     required = {"title", "country_name", "country_code", "ingredients", "steps"}
     if not required.issubset(data.keys()):
+        print(f"[formatter] Missing required fields for {source_url}. Got keys: {list(data.keys())}")
         return None
     if not data["title"] or not data["ingredients"] or not data["steps"]:
+        print(f"[formatter] Empty required field for {source_url}. Data: {data}")
         return None
 
     return data
