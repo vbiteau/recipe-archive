@@ -26,9 +26,9 @@ with app.app_context():
 app.jinja_env.filters["flag"] = flag_emoji
 
 
-# ---------- Home / submit a site ----------
+# ---------- Add a site (scraper form) ----------
 
-@app.route("/")
+@app.route("/add")
 def index():
     total_recipes = Recipe.query.count()
     total_countries = db.session.query(Recipe.country_code).distinct().count()
@@ -161,8 +161,9 @@ def scrape():
     )
 
 
-# ---------- Browse recipes, grouped by country ----------
+# ---------- Home: browse recipes, grouped by country ----------
 
+@app.route("/")
 @app.route("/recipes")
 def recipes():
     country_filter = request.args.get("country")
