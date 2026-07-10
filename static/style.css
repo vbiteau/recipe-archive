@@ -7,6 +7,7 @@
   --text-dim: #B8A98F;
   --saffron: #E3A83B;
   --paprika: #B4432F;
+  --teal: #4C8C86;
   --radius: 10px;
 }
 
@@ -199,6 +200,7 @@ main{
   word-break:break-all;
 }
 .result-list li a:hover{ border-color:var(--saffron); }
+
 .actions-row{ display:flex; gap:1.5rem; }
 .actions-row a{
   color:var(--saffron);
@@ -207,6 +209,64 @@ main{
 }
 
 .empty-state{ color:var(--text-dim); }
+
+/* ---------- Live scrape terminal ---------- */
+
+.terminal{
+  background:#000;
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:1.1rem 1.3rem;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size:0.82rem;
+  max-height:420px;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  gap:0.55rem;
+  margin-bottom:1.5rem;
+}
+
+.term-line{
+  display:flex;
+  gap:0.65rem;
+  align-items:baseline;
+  flex-wrap:wrap;
+}
+
+.term-prompt{ color:var(--saffron); flex-shrink:0; }
+
+.term-url{
+  color:var(--text);
+  word-break:break-all;
+}
+
+.term-status{
+  margin-left:auto;
+  white-space:nowrap;
+  padding-left:1rem;
+}
+
+.term-status--pending{ color:var(--text-dim); }
+
+.term-status--working{
+  color:var(--saffron);
+  animation:term-pulse 1.4s ease-in-out infinite;
+}
+
+.term-status--done{
+  color:var(--teal);
+  font-weight:600;
+}
+
+@keyframes term-pulse{
+  0%, 100%{ opacity:1; }
+  50%{ opacity:0.45; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .term-status--working{ animation:none; }
+}
 
 /* ---------- Browse / country groups ---------- */
 
