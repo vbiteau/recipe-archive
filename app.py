@@ -1,5 +1,6 @@
 import os
 import threading
+import time
 import uuid
 from urllib.parse import urlparse
 
@@ -111,6 +112,7 @@ def _process_scrape_job(job_id, normalized_urls):
             item = job["items"][u]
             item["state"] = "working"
             item["detail"] = "starting..."
+            item["started_at"] = time.time()
 
             try:
                 if _is_whole_site_url(u):
@@ -142,6 +144,7 @@ def _process_scrape_job(job_id, normalized_urls):
             item["state"] = "done"
             item["count"] = saved_count
             item["detail"] = f"{saved_count} recipe{'s' if saved_count != 1 else ''} scraped"
+            item["finished_at"] = time.time()
 
         job["finished"] = True
         print(f"[scrape job] {job_id} finished.")
@@ -184,92 +187,3 @@ def scrape():
     SCRAPE_JOBS[job_id] = {
         "urls": normalized_urls,
         "items": {
-            u: {"state": "pending", "count": 0, "detail": ""}
-            for u in normalized_urls
-        },
-        "finished": False,
-    }
-
-    thread = threading.Thread(target=_process_scrape_job, args=(job_id, normalized_urls), daemon=True)
-    thread.start()
-
-    return redirect(url_for("scrape_status", job_id=job_id))
-
-
-@app.route("/scrape/<job_id>")
-def scrape_status(job_id):
-    job = SCRAPE_JOBS.get(job_id)
-    if job is None:
-        flash("That scrape job wasn't found — it may have expired, or the server restarted.")
-        return redirect(url_for("index"))
-
-    return render_template("scrape_result.html", job_id=job_id, urls=job["urls"])
-
-
-@app.route("/api/job/<job_id>")
-def api_job(job_id):
-    job = SCRAPE_JOBS.get(job_id)
-    if job is None:
-        return jsonify({"error": "not found"}), 404
-    return jsonify(job)
-
-
-# ---------- Browse recipes, grouped by country ----------
-
-@app.route("/recipes")
-def recipes():
-    country_filter = request.args.get("country")
-
-    query = Recipe.query.order_by(Recipe.country_name, Recipe.title)
-    if country_filter:
-        query = query.filter(Recipe.country_code == country_filter.upper())
-    all_recipes = query.all()
-
-    # Group by country for display
-    grouped = {}
-    for r in all_recipes:
-        key = (r.country_code, r.country_name)
-        grouped.setdefault(key, []).append(r)
-
-    # Sort countries alphabetically by name
-    grouped_sorted = dict(sorted(grouped.items(), key=lambda kv: (kv[0][1] or "Unknown")))
-
-    # For the filter dropdown: every distinct country currently in the DB
-    all_countries = (
-        db.session.query(Recipe.country_code, Recipe.country_name)
-        .distinct()
-        .order_by(Recipe.country_name)
-        .all()
-    )
-
-    return render_template(
-        "recipes.html",
-        grouped=grouped_sorted,
-        all_countries=all_countries,
-        active_filter=country_filter.upper() if country_filter else None,
-    )
-
-
-@app.route("/recipes/<int:recipe_id>")
-def recipe_detail(recipe_id):
-    recipe = Recipe.query.get_or_404(recipe_id)
-    return render_template("recipe_detail.html", recipe=recipe)
-
-
-@app.route("/api/stats")
-def api_stats():
-    """Tiny JSON endpoint used to live-update the homepage counters."""
-    total_recipes = Recipe.query.count()
-    total_countries = db.session.query(Recipe.country_code).distinct().count()
-    return jsonify({"total_recipes": total_recipes, "total_countries": total_countries})
-
-
-@app.route("/api/recipes")
-def api_recipes():
-    """Simple JSON API, handy if you want a frontend framework on top later."""
-    all_recipes = Recipe.query.order_by(Recipe.country_name, Recipe.title).all()
-    return jsonify([r.to_dict() for r in all_recipes])
-
-
-if __name__ == "__main__":
-    app.run(debug=True, port=5000)
