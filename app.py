@@ -40,34 +40,58 @@ def index():
 
 @app.route("/scrape", methods=["POST"])
 def scrape():
-    url = request.form.get("url", "").strip()
-    mode = request.form.get("mode", "site")  # "site" = crawl whole domain, "single" = one recipe page
+    raw_input = request.form.get("url", "").strip()
+    mode = request.form.get("mode", "single")  # "single" = each link is one recipe page, "site" = crawl as a whole site
 
-    if not url:
-        flash("Please enter a URL.")
+    if not raw_input:
+        flash("Please enter at least one URL.")
         return redirect(url_for("index"))
 
-    if not url.startswith(("http://", "https://")):
-        url = "https://" + url
+    # Split on newlines (and tolerate commas/whitespace too), drop blanks, dedupe while preserving order
+    raw_lines = [line.strip() for line in raw_input.replace(",", "\n").splitlines()]
+    seen = set()
+    urls = []
+    for line in raw_lines:
+        if not line or line in seen:
+            continue
+        seen.add(line)
+        urls.append(line)
 
-    parsed = urlparse(url)
-    if not parsed.netloc:
-        flash("That doesn't look like a valid URL.")
+    if not urls:
+        flash("Please enter at least one URL.")
         return redirect(url_for("index"))
 
-    source_domain = parsed.netloc
+    normalized_urls = []
+    for u in urls:
+        if not u.startswith(("http://", "https://")):
+            u = "https://" + u
+        if urlparse(u).netloc:
+            normalized_urls.append(u)
 
-    # Step 1: get raw recipe(s) off the site
-    if mode == "single":
-        raw = scrape_single_url(url)
-        found = [{"url": url, "raw_recipe": raw}] if raw else []
-    else:
-        found = crawl_site(url)
+    if not normalized_urls:
+        flash("None of those looked like valid URLs.")
+        return redirect(url_for("index"))
+
+    if mode == "site" and len(normalized_urls) > 1:
+        flash(f"Whole-site mode only processes one link per submission — crawled just the first ({normalized_urls[0]}). Submit the others separately.")
+        normalized_urls = normalized_urls[:1]
+
+    # Step 1: get raw recipe(s) for every submitted URL
+    found = []
+    for u in normalized_urls:
+        if mode == "single":
+            raw = scrape_single_url(u)
+            if raw:
+                found.append({"url": u, "raw_recipe": raw})
+        else:
+            found.extend(crawl_site(u))
+
+    source_label = normalized_urls[0] if len(normalized_urls) == 1 else f"{len(normalized_urls)} submitted links"
 
     if not found:
         return render_template(
             "scrape_result.html",
-            source_url=url,
+            source_url=source_label,
             saved=[],
             failed_count=0,
             no_recipes_found=True,
@@ -100,7 +124,7 @@ def scrape():
             notes=normalized.get("notes"),
             image_url=raw_recipe.get("image_url"),
             source_url=page_url,
-            source_domain=source_domain,
+            source_domain=urlparse(page_url).netloc,
         )
         db.session.add(recipe)
         saved.append(recipe)
@@ -109,7 +133,7 @@ def scrape():
 
     return render_template(
         "scrape_result.html",
-        source_url=url,
+        source_url=source_label,
         saved=saved,
         failed_count=failed_count,
         no_recipes_found=False,
