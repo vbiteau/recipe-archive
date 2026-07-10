@@ -1,5 +1,6 @@
 import os
 import threading
+import uuid
 from urllib.parse import urlparse
 
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
@@ -25,6 +26,10 @@ with app.app_context():
 
 app.jinja_env.filters["flag"] = flag_emoji
 
+# In-memory tracker for live scrape job progress, keyed by job_id.
+# Fine for a single-process app like this; not meant to survive a restart.
+SCRAPE_JOBS = {}
+
 
 # ---------- Home / submit a site ----------
 
@@ -49,75 +54,97 @@ def _is_whole_site_url(url):
     return path in ("", "/")
 
 
-def _process_scrape_job(normalized_urls):
+def _save_normalized_recipe(normalized, raw_recipe, page_url):
+    """Insert or update a Recipe row. Returns True if it counts as saved."""
+    if normalized is None:
+        return False
+
+    existing = Recipe.query.filter_by(source_url=page_url).first()
+    if existing:
+        existing.title = normalized["title"]
+        existing.country_name = normalized.get("country_name")
+        existing.country_code = normalized.get("country_code")
+        existing.cuisine_region = normalized.get("cuisine_region")
+        existing.servings = normalized.get("servings")
+        existing.prep_time = normalized.get("prep_time")
+        existing.cook_time = normalized.get("cook_time")
+        existing.total_time = normalized.get("total_time")
+        existing.ingredients = normalized.get("ingredients", [])
+        existing.steps = normalized.get("steps", [])
+        existing.notes = normalized.get("notes")
+        existing.image_url = raw_recipe.get("image_url")
+        db.session.commit()
+        return True
+
+    recipe = Recipe(
+        title=normalized["title"],
+        country_name=normalized.get("country_name"),
+        country_code=normalized.get("country_code"),
+        cuisine_region=normalized.get("cuisine_region"),
+        servings=normalized.get("servings"),
+        prep_time=normalized.get("prep_time"),
+        cook_time=normalized.get("cook_time"),
+        total_time=normalized.get("total_time"),
+        ingredients=normalized.get("ingredients", []),
+        steps=normalized.get("steps", []),
+        notes=normalized.get("notes"),
+        image_url=raw_recipe.get("image_url"),
+        source_url=page_url,
+        source_domain=urlparse(page_url).netloc,
+    )
+    db.session.add(recipe)
+    db.session.commit()
+    return True
+
+
+def _process_scrape_job(job_id, normalized_urls):
     """
-    Runs in a background thread so the web request can return immediately
-    instead of blocking (and risking a timeout) while every URL gets
-    scraped and sent to Claude one at a time.
+    Runs in a background thread. Processes each submitted URL fully
+    (scrape -> Claude format -> save) before moving to the next, updating
+    SCRAPE_JOBS[job_id] along the way so the frontend can poll and show
+    live per-link progress in the terminal view.
     """
     with app.app_context():
-        found = []
+        job = SCRAPE_JOBS[job_id]
+
         for u in normalized_urls:
+            item = job["items"][u]
+            item["state"] = "working"
+            item["detail"] = "starting..."
+
             try:
                 if _is_whole_site_url(u):
-                    found.extend(crawl_site(u))
+                    def progress_cb(visited, found_count, item=item):
+                        item["detail"] = f"visited {visited} page{'s' if visited != 1 else ''}, found {found_count} candidate{'s' if found_count != 1 else ''}"
+                    raw_items = crawl_site(u, progress_callback=progress_cb)
                 else:
                     raw = scrape_single_url(u)
-                    if raw:
-                        found.append({"url": u, "raw_recipe": raw})
+                    raw_items = [{"url": u, "raw_recipe": raw}] if raw else []
             except Exception as e:
                 print(f"[scrape job] Failed to scrape {u}: {e}")
+                raw_items = []
 
-        for item in found:
-            page_url = item["url"]
-            raw_recipe = item["raw_recipe"]
-            try:
-                normalized = format_recipe(raw_recipe, page_url)
-            except Exception as e:
-                print(f"[scrape job] Claude formatting failed for {page_url}: {e}")
-                continue
+            saved_count = 0
+            total_candidates = len(raw_items)
 
-            if normalized is None:
-                continue
+            for i, candidate in enumerate(raw_items, start=1):
+                page_url = candidate["url"]
+                raw_recipe = candidate["raw_recipe"]
+                item["detail"] = f"formatting {i}/{total_candidates}..."
 
-            existing = Recipe.query.filter_by(source_url=page_url).first()
-            if existing:
-                # Already have this URL — update it in place rather than duplicating
-                existing.title = normalized["title"]
-                existing.country_name = normalized.get("country_name")
-                existing.country_code = normalized.get("country_code")
-                existing.cuisine_region = normalized.get("cuisine_region")
-                existing.servings = normalized.get("servings")
-                existing.prep_time = normalized.get("prep_time")
-                existing.cook_time = normalized.get("cook_time")
-                existing.total_time = normalized.get("total_time")
-                existing.ingredients = normalized.get("ingredients", [])
-                existing.steps = normalized.get("steps", [])
-                existing.notes = normalized.get("notes")
-                existing.image_url = raw_recipe.get("image_url")
-                db.session.commit()
-                continue
+                try:
+                    normalized = format_recipe(raw_recipe, page_url)
+                    if _save_normalized_recipe(normalized, raw_recipe, page_url):
+                        saved_count += 1
+                except Exception as e:
+                    print(f"[scrape job] Claude formatting failed for {page_url}: {e}")
 
-            recipe = Recipe(
-                title=normalized["title"],
-                country_name=normalized.get("country_name"),
-                country_code=normalized.get("country_code"),
-                cuisine_region=normalized.get("cuisine_region"),
-                servings=normalized.get("servings"),
-                prep_time=normalized.get("prep_time"),
-                cook_time=normalized.get("cook_time"),
-                total_time=normalized.get("total_time"),
-                ingredients=normalized.get("ingredients", []),
-                steps=normalized.get("steps", []),
-                notes=normalized.get("notes"),
-                image_url=raw_recipe.get("image_url"),
-                source_url=page_url,
-                source_domain=urlparse(page_url).netloc,
-            )
-            db.session.add(recipe)
-            db.session.commit()  # commit one at a time so results show up progressively
+            item["state"] = "done"
+            item["count"] = saved_count
+            item["detail"] = f"{saved_count} recipe{'s' if saved_count != 1 else ''} scraped"
 
-        print(f"[scrape job] Finished. Processed {len(found)} candidate recipe(s) from {len(normalized_urls)} submitted URL(s).")
+        job["finished"] = True
+        print(f"[scrape job] {job_id} finished.")
 
 
 @app.route("/scrape", methods=["POST"])
@@ -153,21 +180,38 @@ def scrape():
         flash("None of those looked like valid URLs.")
         return redirect(url_for("index"))
 
-    # Kick off the actual scraping + Claude formatting in the background so
-    # this request returns immediately rather than risking a timeout.
-    thread = threading.Thread(target=_process_scrape_job, args=(normalized_urls,), daemon=True)
+    job_id = uuid.uuid4().hex[:12]
+    SCRAPE_JOBS[job_id] = {
+        "urls": normalized_urls,
+        "items": {
+            u: {"state": "pending", "count": 0, "detail": ""}
+            for u in normalized_urls
+        },
+        "finished": False,
+    }
+
+    thread = threading.Thread(target=_process_scrape_job, args=(job_id, normalized_urls), daemon=True)
     thread.start()
 
-    site_count = sum(1 for u in normalized_urls if _is_whole_site_url(u))
-    single_count = len(normalized_urls) - site_count
+    return redirect(url_for("scrape_status", job_id=job_id))
 
-    return render_template(
-        "scrape_result.html",
-        submitted_count=len(normalized_urls),
-        submitted_urls=normalized_urls,
-        site_count=site_count,
-        single_count=single_count,
-    )
+
+@app.route("/scrape/<job_id>")
+def scrape_status(job_id):
+    job = SCRAPE_JOBS.get(job_id)
+    if job is None:
+        flash("That scrape job wasn't found — it may have expired, or the server restarted.")
+        return redirect(url_for("index"))
+
+    return render_template("scrape_result.html", job_id=job_id, urls=job["urls"])
+
+
+@app.route("/api/job/<job_id>")
+def api_job(job_id):
+    job = SCRAPE_JOBS.get(job_id)
+    if job is None:
+        return jsonify({"error": "not found"}), 404
+    return jsonify(job)
 
 
 # ---------- Browse recipes, grouped by country ----------
