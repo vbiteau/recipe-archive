@@ -77,7 +77,13 @@ def format_recipe(raw_recipe, source_url):
     response = client.messages.create(
         model=MODEL,
         max_tokens=2000,
-        system=SYSTEM_PROMPT,
+        system=[
+            {
+                "type": "text",
+                "text": SYSTEM_PROMPT,
+                "cache_control": {"type": "ephemeral"},
+            }
+        ],
         messages=[{"role": "user", "content": user_content}],
     )
 
