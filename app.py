@@ -127,11 +127,19 @@ def _process_scrape_job(job_id, normalized_urls):
                 raw_items = []
 
             saved_count = 0
+            skipped_count = 0
             total_candidates = len(raw_items)
 
             for i, candidate in enumerate(raw_items, start=1):
                 page_url = candidate["url"]
                 raw_recipe = candidate["raw_recipe"]
+
+                # Skip URLs we've already archived — saves the Claude call entirely.
+                if Recipe.query.filter_by(source_url=page_url).first():
+                    skipped_count += 1
+                    item["detail"] = f"formatting {i}/{total_candidates}... ({skipped_count} already archived)"
+                    continue
+
                 item["detail"] = f"formatting {i}/{total_candidates}..."
 
                 try:
@@ -143,7 +151,10 @@ def _process_scrape_job(job_id, normalized_urls):
 
             item["state"] = "done"
             item["count"] = saved_count
-            item["detail"] = f"{saved_count} recipe{'s' if saved_count != 1 else ''} scraped"
+            if skipped_count:
+                item["detail"] = f"{saved_count} new, {skipped_count} already archived"
+            else:
+                item["detail"] = f"{saved_count} recipe{'s' if saved_count != 1 else ''} scraped"
             item["finished_at"] = time.time()
 
         job["finished"] = True
